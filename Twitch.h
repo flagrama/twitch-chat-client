@@ -12,7 +12,7 @@ public:
     Twitch();
     ~Twitch();
 
-    void read_responses(char* buffer);
+    void read_responses(char* text_buffer);
 private:
     struct addrinfo *addr;
     int sockfd;

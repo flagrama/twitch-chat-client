@@ -8,6 +8,8 @@
 #include <cerrno>
 #include <string>
 #include <unistd.h>
+#include <iostream>
+#include <sstream>
 #include "Twitch.h"
 
 Twitch::Twitch() {
@@ -61,24 +63,23 @@ void Twitch::connect() {
 
 void Twitch::login() {
     std::string message;
-    char buffer[256];
+    std::string token;
 
-    snprintf(buffer, sizeof buffer, "PASS %s\n", std::getenv("TOKEN"));
-    message = buffer;
+    token = std::getenv("TOKEN");
+    message = "PASS " + token + '\n';
     send(this->sockfd, message.c_str(), message.length(), 0);
-    memset(buffer, 0, sizeof buffer);
 
-    send(this->sockfd, "NICK com.flagrama.*-twitch-chat\n", message.length(), 0);
-    memset(buffer, 0, sizeof buffer);
+    message = "NICK com.flagrama.*-twitch-chat\n";
+    send(this->sockfd, message.c_str(), message.length(), 0);
 }
 
-void Twitch::read_responses(char* buffer) {
+void Twitch::read_responses(char* text_buffer) {
     std::string server;
-    char message_buffer[4096];
+    char message_buffer[1024];
 
-    strcat(buffer, "Connecting to Twitch.\n");
+    strcat(text_buffer, "Connecting to Twitch.\n");
     connect();
-    strcat(buffer, "Connected. Now logging in.\n");
+    strcat(text_buffer, "Connected. Now logging in.\n");
     login();
 
     memset(message_buffer, 0, sizeof message_buffer);
@@ -99,8 +100,19 @@ void Twitch::read_responses(char* buffer) {
             std::string reply = "PONG " + server;
             send(this->sockfd, reply.c_str(), reply.length(), 0);
         }
+        else if (response.substr(0, server.length()) == server) {
+            std::istringstream iss(response);
+            std::string line;
+            char buffer[1024];
+
+            while(std::getline(iss, line, '\n')) {
+                std::string server_message = line.substr(line.find(':', 1) + 1, std::string::npos);
+                strcat(buffer, server_message.c_str());
+            }
+            strcat(text_buffer, buffer);
+        }
         else {
-            strcat(buffer, response.c_str());
+            strcat(text_buffer, response.c_str());
         }
 
         memset(message_buffer, 0, sizeof message_buffer);

@@ -29,16 +29,16 @@ int main(int argc, char *argv[]) {
 }
 
 void get_responses(Twitch* twitch, GtkTextView* textView) {
-    GtkTextIter iter;
     GtkTextBuffer *textBuffer = gtk_text_view_get_buffer(textView);
-    char response_buffer[4096];
+    char response_buffer[1024];
     std::thread responses (&Twitch::read_responses, twitch, response_buffer);
 
     while(true) {
         if(strcmp(response_buffer, "")) {
+            GtkTextIter iter;
             gtk_text_buffer_get_end_iter(textBuffer, &iter);
             gtk_text_buffer_insert(textBuffer, &iter, response_buffer, -1);
-            gtk_text_view_scroll_to_mark(textView, gtk_text_buffer_get_insert(textBuffer), 0, 0, 0, 0);
+            gtk_text_view_scroll_to_mark(textView, gtk_text_buffer_get_insert(textBuffer), 0, true, 1, 1);
 
             memset(response_buffer, 0, sizeof response_buffer);
         }
