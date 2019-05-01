@@ -11,6 +11,8 @@ class Twitch {
 public:
     Twitch();
     ~Twitch();
+
+    void read_responses(char* buffer);
 private:
     struct addrinfo *addr;
     int sockfd;
@@ -19,7 +21,6 @@ private:
     int get_socket();
     void connect();
     void login();
-    void read_responses();
 };
 
 

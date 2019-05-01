@@ -6,21 +6,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
-#include <iostream>
-#include <thread>
+#include <string>
 #include <unistd.h>
 #include "Twitch.h"
 
 Twitch::Twitch() {
     addr = get_addrinfo();
     sockfd = get_socket();
-
-    connect();
-
-    std::thread responses (&Twitch::read_responses, this);
-
-    login();
-    responses.detach();
 }
 
 Twitch::~Twitch() {
@@ -30,7 +22,7 @@ Twitch::~Twitch() {
 
 addrinfo *Twitch::get_addrinfo() {
     int status;
-    struct addrinfo hints;
+    struct addrinfo hints {};
     struct addrinfo *result;
 
     memset(&hints, 0, sizeof hints);
@@ -48,14 +40,14 @@ addrinfo *Twitch::get_addrinfo() {
 }
 
 int Twitch::get_socket() {
-    int sockfd = socket(this->addr->ai_family, this->addr->ai_socktype, this->addr->ai_protocol);
+    int socket = ::socket(this->addr->ai_family, this->addr->ai_socktype, this->addr->ai_protocol);
 
-    if (sockfd == -1) {
+    if (socket == -1) {
         fprintf(stderr, "socket error: %d\n", errno);
         exit(errno);
     }
 
-    return sockfd;
+    return socket;
 }
 
 void Twitch::connect() {
@@ -76,31 +68,41 @@ void Twitch::login() {
     send(this->sockfd, message.c_str(), message.length(), 0);
     memset(buffer, 0, sizeof buffer);
 
-    snprintf(buffer, sizeof buffer, "NICK %s\n", std::getenv("USERNICK"));
-    message = buffer;
-    send(this->sockfd, message.c_str(), message.length(), 0);
+    send(this->sockfd, "NICK com.flagrama.*-twitch-chat\n", message.length(), 0);
     memset(buffer, 0, sizeof buffer);
 }
 
-void Twitch::read_responses() {
-    std::cout << "Waiting for server responses..." << std::endl;
-    while(true) {
-        char buffer[4096];
+void Twitch::read_responses(char* buffer) {
+    std::string server;
+    char message_buffer[4096];
 
-        int bytes_received = recv(this->sockfd, buffer, sizeof buffer, 0);
+    strcat(buffer, "Connecting to Twitch.\n");
+    connect();
+    strcat(buffer, "Connected. Now logging in.\n");
+    login();
+
+    memset(message_buffer, 0, sizeof message_buffer);
+
+    while(true) {
+        int bytes_received = recv(this->sockfd, message_buffer, sizeof message_buffer, 0);
+        std::string response(message_buffer, 0, bytes_received);
+
         if(bytes_received == 0) return;
-        if(bytes_received > 0) {
-            std::string response(buffer, 0, bytes_received);
-            std::cout << response;
-            if (response.substr(0, 4) == "PING") {
-                std::string reply;
-                snprintf(buffer, sizeof buffer, "PONG %s", response.substr(5, std::string::npos).c_str());
-                reply = buffer;
-                send(this->sockfd, reply.c_str(), reply.length(), 0);
-                std::cout << reply;
-            }
+
+        if(server.empty()) {
+            int pos = response.find(':');
+            int length = response.find(' ') - pos;
+            server = response.substr(pos, length);
         }
 
-        memset(buffer, 0, sizeof buffer);
+        if (response.substr(0, 4) == "PING") {
+            std::string reply = "PONG " + server;
+            send(this->sockfd, reply.c_str(), reply.length(), 0);
+        }
+        else {
+            strcat(buffer, response.c_str());
+        }
+
+        memset(message_buffer, 0, sizeof message_buffer);
     }
 }
