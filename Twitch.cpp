@@ -15,6 +15,7 @@
 Twitch::Twitch() {
     addr = get_addrinfo();
     sockfd = get_socket();
+    stopping = false;
 }
 
 Twitch::~Twitch() {
@@ -73,18 +74,22 @@ void Twitch::login() {
     send(this->sockfd, message.c_str(), message.length(), 0);
 }
 
-void Twitch::read_responses(char* text_buffer) {
-    std::string server;
-    char message_buffer[1024];
+void Twitch::disconnect() {
+    stopping = true;
+}
 
-    strcat(text_buffer, "Connecting to Twitch.\n");
+void Twitch::read_responses(std::queue<std::string> &text_queue) {
+    std::string server;
+    char message_buffer[1024] = "";
+
+    text_queue.push("Connecting to Twitch.\n");
     connect();
-    strcat(text_buffer, "Connected. Now logging in.\n");
+    text_queue.push("Connected. Now logging in.\n");
     login();
 
     memset(message_buffer, 0, sizeof message_buffer);
 
-    while(true) {
+    while(!stopping) {
         int bytes_received = recv(this->sockfd, message_buffer, sizeof message_buffer, 0);
         std::string response(message_buffer, 0, bytes_received);
 
@@ -103,16 +108,16 @@ void Twitch::read_responses(char* text_buffer) {
         else if (response.substr(0, server.length()) == server) {
             std::istringstream iss(response);
             std::string line;
-            char buffer[1024];
+            char buffer[1024] = "";
 
             while(std::getline(iss, line, '\n')) {
                 std::string server_message = line.substr(line.find(':', 1) + 1, std::string::npos);
                 strcat(buffer, server_message.c_str());
             }
-            strcat(text_buffer, buffer);
+            text_queue.push(buffer);
         }
         else {
-            strcat(text_buffer, response.c_str());
+            text_queue.push(response);
         }
 
         memset(message_buffer, 0, sizeof message_buffer);

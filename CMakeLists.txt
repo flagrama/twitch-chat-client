@@ -5,9 +5,11 @@ set(CMAKE_CXX_STANDARD 14)
 find_package(Threads)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
-include_directories(${GTK3_INCLUDE_DIRS})
-link_directories(${GTK3_LIBRARY_DIRS})
+pkg_check_modules(GTK3 REQUIRED gtkmm-3.0)
+pkg_check_modules(GLIB REQUIRED glibmm-2.4)
+
+include_directories(${GTK3_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS})
+link_directories(${GTK3_LIBRARY_DIRS} ${GLIB_LIBRARY_DIRS})
 add_definitions(${GTK3_CFLAGS_OTHER})
 
 add_custom_target(
@@ -17,6 +19,6 @@ add_custom_target(
         "${CMAKE_SOURCE_DIR}/twitch-chat.glade" "${CMAKE_CURRENT_BINARY_DIR}/twitch-chat.glade"
 )
 
-add_executable(twitch_chat main.cpp main.h Twitch.cpp Twitch.h)
+add_executable(twitch_chat main.cpp Twitch.cpp Twitch.h ThreadWindow.cpp ThreadWindow.h IrcWorker.cpp IrcWorker.h)
 add_dependencies(twitch_chat gui)
-target_link_libraries(twitch_chat ${CMAKE_THREAD_LIBS_INIT} ${GTK3_LIBRARIES})
+target_link_libraries(twitch_chat ${CMAKE_THREAD_LIBS_INIT} ${GTK3_LIBRARIES} ${GLIB_LIBRARIES})

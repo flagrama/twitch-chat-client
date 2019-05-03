@@ -6,16 +6,19 @@
 #define C_IRC_CLIENT_TWITCH_H
 
 #include <netdb.h>
+#include <queue>
 
 class Twitch {
 public:
     Twitch();
     ~Twitch();
 
-    void read_responses(char* text_buffer);
+    void read_responses(std::queue<std::string> &text_queue);
+    void disconnect();
 private:
     struct addrinfo *addr;
     int sockfd;
+    bool stopping;
 
     static addrinfo *get_addrinfo();
     int get_socket();
