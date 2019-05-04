@@ -3,6 +3,7 @@
 //
 
 #include "ThreadWindow.h"
+#include "Twitch.h"
 #include <iostream>
 #include <gtkmm/builder.h>
 #include <glibmm/fileutils.h>
@@ -12,8 +13,9 @@ ThreadWindow::ThreadWindow() :
     m_Container(),
     m_TextView(),
     m_Dispatcher(),
-    m_Worker(),
-    m_WorkerThread(nullptr) {
+    m_Twitch(new Twitch()),
+    m_Irc(m_Twitch),
+    m_IrcThread(nullptr) {
     set_title("Twitch Chat");
     set_default_size(640, 480);
     set_can_focus(false);
@@ -40,14 +42,14 @@ ThreadWindow::ThreadWindow() :
     auto buffer = m_TextView->get_buffer();
     buffer->create_mark("last_line", buffer->end(), true);
 
-    m_WorkerThread = new std::thread([this] {
-        m_Worker.process_responses(this);
+    m_IrcThread = new std::thread([this] {
+        m_Irc.process_responses(this);
     });
 }
 
 void ThreadWindow::update_widgets() {
     Glib::ustring irc_message;
-    m_Worker.get_data(&irc_message);
+    m_Irc.get_data(&irc_message);
 
     auto buffer = m_TextView->get_buffer();
     Gtk::TextIter iter = buffer->end();
@@ -63,10 +65,10 @@ void ThreadWindow::notify() {
 }
 
 void ThreadWindow::on_notification() {
-    if(m_WorkerThread && m_Worker.has_stopped()) {
-        if(m_WorkerThread->joinable()) m_WorkerThread->join();
-        delete m_WorkerThread;
-        m_WorkerThread = nullptr;
+    if(m_IrcThread && m_Irc.has_stopped()) {
+        if(m_IrcThread->joinable()) m_IrcThread->join();
+        delete m_IrcThread;
+        m_IrcThread = nullptr;
     }
     update_widgets();
 }

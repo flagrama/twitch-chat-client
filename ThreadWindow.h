@@ -21,12 +21,14 @@ private:
     void update_widgets();
     void on_notification();
 
+    Twitch* m_Twitch;
+
     Gtk::ScrolledWindow* m_Container;
     Gtk::TextView* m_TextView;
 
     Glib::Dispatcher m_Dispatcher;
-    IrcWorker m_Worker;
-    std::thread* m_WorkerThread;
+    IrcWorker m_Irc;
+    std::thread* m_IrcThread;
 };
 
 

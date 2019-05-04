@@ -7,16 +7,16 @@
 #include <sstream>
 #include <queue>
 
-IrcWorker::IrcWorker() :
+IrcWorker::IrcWorker(Twitch* twitch) :
     m_Mutex(),
     m_shall_stop(false),
     m_has_stopped(false),
     m_message(),
     m_response_queue(),
-    m_Worker(),
-    m_WorkerThread(nullptr) {
-    m_WorkerThread = new std::thread([this] {
-        m_Worker.read_responses(m_response_queue);
+    m_Twitch(*twitch),
+    m_TwitchThread(nullptr) {
+    m_TwitchThread = new std::thread([this] {
+        m_Twitch.read_responses(m_response_queue);
     });
 }
 
@@ -29,7 +29,7 @@ void IrcWorker::get_data(Glib::ustring *message) {
 void IrcWorker::stop_processing_responses() {
     std::lock_guard<std::mutex> lock(m_Mutex);
     m_shall_stop = true;
-    m_Worker.disconnect();
+    m_Twitch.disconnect();
 }
 
 bool IrcWorker::has_stopped() const {

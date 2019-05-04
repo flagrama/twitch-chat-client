@@ -15,7 +15,7 @@ class ThreadWindow;
 
 class IrcWorker {
 public:
-    IrcWorker();
+    explicit IrcWorker(Twitch* twitch);
 
     void process_responses(ThreadWindow* caller);
     void get_data(Glib::ustring* message);
@@ -24,8 +24,8 @@ public:
 
 private:
     mutable std::mutex m_Mutex;
-    Twitch m_Worker;
-    std::thread* m_WorkerThread;
+    Twitch m_Twitch;
+    std::thread* m_TwitchThread;
 
     std::queue<std::string> m_response_queue;
     bool m_shall_stop;
