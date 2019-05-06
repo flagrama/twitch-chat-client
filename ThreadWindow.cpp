@@ -48,15 +48,24 @@ ThreadWindow::ThreadWindow() :
 }
 
 void ThreadWindow::update_widgets() {
+    const int MAX_LINES = 500;
     Glib::ustring irc_message;
     m_Irc.get_data(&irc_message);
 
     auto buffer = m_TextView->get_buffer();
-    Gtk::TextIter iter = buffer->end();
+    auto iter = buffer->end();
     iter = buffer->insert(iter, irc_message);
 
     auto mark = buffer->get_mark("last_line");
     buffer->move_mark(mark, iter);
+
+    auto excess_lines = buffer->get_line_count() - MAX_LINES;
+    if(excess_lines > 0) {
+        auto iter_start = buffer->get_iter_at_line(0);
+        auto iter_end = buffer->get_iter_at_line(excess_lines);
+        buffer->erase(iter_start, iter_end);
+    }
+
     m_TextView->scroll_to(mark);
 }
 

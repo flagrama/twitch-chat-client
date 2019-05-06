@@ -31,5 +31,4 @@ private:
     std::thread* m_IrcThread;
 };
 
-
 #endif //TWITCH_CHAT_THREADWINDOW_H
