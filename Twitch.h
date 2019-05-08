@@ -6,6 +6,7 @@
 #define C_IRC_CLIENT_TWITCH_H
 
 #include <netdb.h>
+#include <thread>
 #include <queue>
 
 class Twitch {
@@ -26,6 +27,7 @@ private:
     int get_socket();
     void connect();
     void login();
+    static std::string message_display(const std::string &prefix, const std::string &trailing);
 };
 
 

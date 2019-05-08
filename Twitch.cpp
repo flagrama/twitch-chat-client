@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
+#include <chrono>
 #include "Twitch.h"
 
 Twitch::Twitch() {
@@ -82,46 +83,106 @@ void Twitch::disconnect() {
 
 void Twitch::read_responses(std::queue<std::string> &text_queue) {
     std::string server;
-    char message_buffer[1024] = "";
 
     text_queue.push("Connecting to Twitch.\n");
     connect();
     text_queue.push("Connected. Now logging in.\n");
     login();
 
-    memset(message_buffer, 0, sizeof message_buffer);
-
     while(!stopping) {
-        int bytes_received = recv(this->sockfd, message_buffer, sizeof message_buffer, 0);
-        std::string response(message_buffer, 0, bytes_received);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-        if(bytes_received == 0) return;
+        char response_buffer[1024] = "";
+        int bytes_received = recv(this->sockfd, response_buffer, sizeof response_buffer, 0);
+        std::string response(response_buffer, 0, bytes_received);
 
-        if(server.empty()) {
+        if (bytes_received == 0) return;
+
+        if (server.empty()) {
             int pos = response.find(':');
             int length = response.find(' ') - pos;
             server = response.substr(pos, length);
         }
 
-        if (response.substr(0, 4) == "PING") {
-            std::string reply = "PONG " + server;
-            send(this->sockfd, reply.c_str(), reply.length(), 0);
-        }
-        else if (response.substr(0, server.length()) == server) {
-            std::istringstream iss(response);
-            std::string line;
-            char buffer[1024] = "";
+        std::istringstream iss(response);
+        std::string message;
+        char message_buffer[1024] = "";
 
-            while(std::getline(iss, line, '\n')) {
-                std::string server_message = line.substr(line.find(':', 1) + 1, std::string::npos);
-                strcat(buffer, server_message.c_str());
+        while (std::getline(iss, message, '\n')) {
+            int prefix_pos = message.find(':') + 1;
+            int command_pos = message.find(' ', prefix_pos) + 1;
+            int params_pos = message.find(' ', command_pos) + 1;
+            int trailing_pos = message.find(':', prefix_pos) + 1;
+
+            std::string prefix = message.substr(prefix_pos, command_pos - prefix_pos - 1);
+            if(prefix.find(".tmi.twitch.tv") != std::string::npos) {
+                int username_pos;
+                if(message.find('@', prefix_pos) != std::string::npos) {
+                    username_pos = message.find('@', prefix_pos) + 1;
+                }
+                else {
+                    username_pos = message.find(':') + 1;
+                }
+                int twitch_pos = message.find(".tmi.twitch.tv");
+                prefix = message.substr(username_pos, twitch_pos - username_pos);
             }
-            text_queue.push(buffer);
-        }
-        else {
-            text_queue.push(response);
-        }
 
-        memset(message_buffer, 0, sizeof message_buffer);
+            std::string command = message.substr(command_pos, params_pos - command_pos - 1);
+
+            std::string params = message.substr(params_pos, trailing_pos - params_pos - 1);
+
+            std::string trailing = message.substr(trailing_pos, message.length() - trailing_pos - 1);
+
+            if (message.substr(0, 4) == "PING") {
+                std::string reply = "PONG " + server;
+                send(this->sockfd, reply.c_str(), reply.length(), 0);
+            }
+            else if (message.substr(0, server.length()) == server) {
+                if (command == "CAP" && params.find("* ACK") != std::string::npos) {
+                    std::string capabilities;
+                    if (trailing.find("/tags") != std::string::npos) {
+                        capabilities.append("TAGS ");
+                    }
+                    if (trailing.find("/membership") != std::string::npos) {
+                        capabilities.append("MEMBERSHIP ");
+                    }
+                    if (trailing.find("/commands") != std::string::npos) {
+                        capabilities.append("COMMANDS ");
+                    }
+
+                    strcat(message_buffer, ("Capability " + capabilities + "Acknowledged\n").c_str());
+                    text_queue.push(message_buffer);
+                    continue;
+                }
+
+                if (command == "NOTICE") {
+                    if (trailing == "Login authentication failed") {
+                        std::cout << "Bad OAuth token" << std::endl;
+                    }
+                    if (trailing == "Improperly formatted auth") {
+                        std::cout << "Not an OAuth token" << std::endl;
+                    }
+                }
+                strcat(message_buffer, message_display(prefix, trailing).c_str());
+                text_queue.push(message_buffer);
+            }
+            if(command == "PRIVMSG") {
+                strcat(message_buffer, message_display(prefix, trailing).c_str());
+                text_queue.push(message_buffer);
+            }
+
+            memset(message_buffer, 0, sizeof message_buffer);
+            memset(response_buffer, 0, sizeof response_buffer);
+        }
     }
+}
+
+std::string Twitch::message_display(const std::string &prefix, const std::string &trailing) {
+    std::string result;
+    result.append("<");
+    result.append(prefix);
+    result.append("> ");
+    result.append(trailing);
+    result.append("\n");
+    return result;
 }

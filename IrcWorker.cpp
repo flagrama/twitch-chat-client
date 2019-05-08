@@ -38,7 +38,7 @@ void IrcWorker::process_responses(ThreadWindow *caller) {
         m_Twitch->read_responses(m_response_queue);
     });
 
-    do {
+    while (!m_has_stopped) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         {
@@ -63,7 +63,7 @@ void IrcWorker::process_responses(ThreadWindow *caller) {
             m_shall_stop = false;
             m_has_stopped = true;
         }
-    } while (!m_has_stopped);
+    }
 
     caller->notify();
 }

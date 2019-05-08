@@ -50,6 +50,10 @@ void TwitchChatWindow::display_login_dialog() {
             Gtk::Entry *oauth_entry;
             m_RefBuilder->get_widget("login_oauth", oauth_entry);
             Glib::ustring token = oauth_entry->get_text();
+            if(token.empty()) {
+                close();
+                break;
+            }
             m_Twitch->set_token(std::string(token));
             break;
         }
