@@ -8,6 +8,8 @@
 #include <gtkmm/scrolledwindow.h>
 #include <gtkmm/textview.h>
 #include <gtkmm/window.h>
+#include <gtkmm/dialog.h>
+#include <gtkmm/builder.h>
 #include <glibmm/dispatcher.h>
 #include <thread>
 #include "IrcWorker.h"
@@ -20,12 +22,17 @@ public:
 private:
     void update_widgets();
     void on_notification();
+    void setup_window();
+    void display_login_dialog();
+    void start_irc_thread();
 
     Twitch* m_Twitch;
 
     Gtk::ScrolledWindow* m_Container;
     Gtk::TextView* m_TextView;
+    Gtk::Dialog* m_LoginDialog;
 
+    Glib::RefPtr<Gtk::Builder> m_RefBuilder;
     Glib::Dispatcher m_Dispatcher;
     IrcWorker m_Irc;
     std::thread* m_IrcThread;

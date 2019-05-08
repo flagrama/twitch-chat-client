@@ -14,11 +14,13 @@ public:
     ~Twitch();
 
     void read_responses(std::queue<std::string> &text_queue);
+    void set_token(std::string token_string);
     void disconnect();
 private:
     struct addrinfo *addr;
     int sockfd;
     bool stopping;
+    std::string token;
 
     static addrinfo *get_addrinfo();
     int get_socket();

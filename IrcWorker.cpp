@@ -13,12 +13,8 @@ IrcWorker::IrcWorker(Twitch* twitch) :
     m_has_stopped(false),
     m_message(),
     m_response_queue(),
-    m_Twitch(*twitch),
-    m_TwitchThread(nullptr) {
-    m_TwitchThread = new std::thread([this] {
-        m_Twitch.read_responses(m_response_queue);
-    });
-}
+    m_Twitch(twitch),
+    m_TwitchThread(nullptr) {}
 
 void IrcWorker::get_data(Glib::ustring *message) {
     std::lock_guard<std::mutex> lock(m_Mutex);
@@ -29,7 +25,7 @@ void IrcWorker::get_data(Glib::ustring *message) {
 void IrcWorker::stop_processing_responses() {
     std::lock_guard<std::mutex> lock(m_Mutex);
     m_shall_stop = true;
-    m_Twitch.disconnect();
+    m_Twitch->disconnect();
 }
 
 bool IrcWorker::has_stopped() const {
@@ -38,6 +34,10 @@ bool IrcWorker::has_stopped() const {
 }
 
 void IrcWorker::process_responses(ThreadWindow *caller) {
+    m_TwitchThread = new std::thread([this] {
+        m_Twitch->read_responses(m_response_queue);
+    });
+
     do {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 

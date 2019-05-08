@@ -24,7 +24,7 @@ public:
 
 private:
     mutable std::mutex m_Mutex;
-    Twitch m_Twitch;
+    Twitch* m_Twitch;
     std::thread* m_TwitchThread;
 
     std::queue<std::string> m_response_queue;

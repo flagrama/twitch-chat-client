@@ -6,23 +6,30 @@
 #include "Twitch.h"
 #include <iostream>
 #include <gtkmm/builder.h>
+#include <gtkmm/entry.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/markup.h>
 
 ThreadWindow::ThreadWindow() :
     m_Container(),
     m_TextView(),
+    m_LoginDialog(),
     m_Dispatcher(),
     m_Twitch(new Twitch()),
     m_Irc(m_Twitch),
-    m_IrcThread(nullptr) {
+    m_IrcThread(nullptr),
+    m_RefBuilder(Gtk::Builder::create()) {
+    setup_window();
+    display_login_dialog();
+    start_irc_thread();
+}
+
+void ThreadWindow::setup_window() {
     set_title("Twitch Chat");
     set_default_size(640, 480);
-    set_can_focus(false);
 
-    auto refBuilder = Gtk::Builder::create();
     try {
-        refBuilder->add_from_file("twitch-chat.glade");
+        m_RefBuilder->add_from_file("twitch-chat.glade");
     } catch(const Glib::FileError& ex) {
         std::cerr << "FileError: " << ex.what() << std::endl;
         exit(1);
@@ -33,10 +40,39 @@ ThreadWindow::ThreadWindow() :
         std::cerr << "BuilderError: " << ex.what() << std::endl;
         exit(3);
     }
-    refBuilder->get_widget("container", m_Container);
-    refBuilder->get_widget("irc_messages", m_TextView);
+    m_RefBuilder->get_widget("container", m_Container);
+    m_RefBuilder->get_widget("irc_messages", m_TextView);
     add(*m_Container);
+    show();
+}
 
+void ThreadWindow::display_login_dialog() {
+    m_RefBuilder->get_widget("login_dialog", m_LoginDialog);
+    auto response = m_LoginDialog->run();
+    m_LoginDialog->close();
+    switch(response) {
+        case(Gtk::RESPONSE_OK):
+        {
+            Gtk::Entry *oauth_entry;
+            m_RefBuilder->get_widget("login_oauth", oauth_entry);
+            Glib::ustring token = oauth_entry->get_text();
+            m_Twitch->set_token(std::string(token));
+            break;
+        }
+        case(Gtk::RESPONSE_CANCEL):
+        {
+            close();
+            break;
+        }
+        default:
+        {
+            close();
+            break;
+        }
+    }
+}
+
+void ThreadWindow::start_irc_thread() {
     m_Dispatcher.connect(sigc::mem_fun(*this, &ThreadWindow::on_notification));
 
     auto buffer = m_TextView->get_buffer();

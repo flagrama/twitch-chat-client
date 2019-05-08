@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include "Twitch.h"
 
 Twitch::Twitch() {
@@ -62,15 +63,22 @@ void Twitch::connect() {
     }
 }
 
+void Twitch::set_token(std::string token_string) {
+    this->token = std::move(token_string);
+}
+
 void Twitch::login() {
     std::string message;
-    std::string token;
-
-    token = std::getenv("TOKEN");
     message = "PASS " + token + '\n';
     send(this->sockfd, message.c_str(), message.length(), 0);
 
     message = "NICK com.flagrama.*-twitch-chat\n";
+    send(this->sockfd, message.c_str(), message.length(), 0);
+
+    message = "CAP REQ :twitch.tv/tags\n";
+    send(this->sockfd, message.c_str(), message.length(), 0);
+
+    message = "JOIN #flagrama\n";
     send(this->sockfd, message.c_str(), message.length(), 0);
 }
 
