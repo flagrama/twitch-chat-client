@@ -109,7 +109,13 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
         char message_buffer[1024] = "";
 
         while (std::getline(iss, message, '\n')) {
-            int prefix_pos = message.find(':') + 1;
+            int prefix_pos;
+            if(message[0] == '@') {
+                prefix_pos = message.find(' ') + 2;
+            }
+            else {
+                prefix_pos = message.find(':') + 1;
+            }
             int command_pos = message.find(' ', prefix_pos) + 1;
             int params_pos = message.find(' ', command_pos) + 1;
             int trailing_pos = message.find(':', prefix_pos) + 1;
