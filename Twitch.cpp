@@ -140,7 +140,7 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
             std::string trailing = message.substr(trailing_pos, message.length() - trailing_pos - 1);
 
             if (message.substr(0, 4) == "PING") {
-                std::string reply = "PONG " + server;
+                std::string reply = "PONG " + server + '\n';
                 send(this->sockfd, reply.c_str(), reply.length(), 0);
             }
             else if (message.substr(0, server.length()) == server) {
