@@ -19,6 +19,6 @@ add_custom_target(
         "${CMAKE_SOURCE_DIR}/twitch-chat.glade" "${CMAKE_CURRENT_BINARY_DIR}/twitch-chat.glade"
 )
 
-add_executable(twitch_chat main.cpp Twitch.cpp Twitch.h ThreadWindow.cpp ThreadWindow.h IrcWorker.cpp IrcWorker.h)
+add_executable(twitch_chat main.cpp Twitch.cpp Twitch.h ThreadWindow.cpp ThreadWindow.h IrcWorker.cpp IrcWorker.h TwitchChatWindow.cpp TwitchChatWindow.h)
 add_dependencies(twitch_chat gui)
 target_link_libraries(twitch_chat ${CMAKE_THREAD_LIBS_INIT} ${GTK3_LIBRARIES} ${GLIB_LIBRARIES})

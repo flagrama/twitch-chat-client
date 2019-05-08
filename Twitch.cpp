@@ -74,12 +74,6 @@ void Twitch::login() {
 
     message = "NICK com.flagrama.*-twitch-chat\n";
     send(this->sockfd, message.c_str(), message.length(), 0);
-
-    message = "CAP REQ :twitch.tv/tags\n";
-    send(this->sockfd, message.c_str(), message.length(), 0);
-
-    message = "JOIN #flagrama\n";
-    send(this->sockfd, message.c_str(), message.length(), 0);
 }
 
 void Twitch::disconnect() {
