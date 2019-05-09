@@ -3,6 +3,8 @@
 //
 
 #include <iostream>
+#include <pwd.h>
+#include <fstream>
 #include "TwitchChatWindow.h"
 
 TwitchChatWindow::TwitchChatWindow() :
@@ -41,6 +43,28 @@ void TwitchChatWindow::setup_window() {
 }
 
 void TwitchChatWindow::display_login_dialog() {
+    std::string token_file_path;
+
+    if ((token_file_path = getenv("HOME")).empty()) {
+        token_file_path = getpwuid(getuid())->pw_dir;
+    }
+
+    token_file_path.append("/.local/share/twitch_chat_client");
+    std::ifstream token_input_file(token_file_path + "/token");
+
+    if(!token_input_file.fail()) {
+        std::string token_string;
+
+        token_input_file.seekg(0, std::ios::end);
+        token_string.reserve(token_input_file.tellg());
+        token_input_file.seekg(0, std::ios::beg);
+
+        token_string.assign((std::istreambuf_iterator<char>(token_input_file)),
+                            std::istreambuf_iterator<char>());
+        m_Twitch->set_token(token_string);
+        return;
+    }
+
     m_RefBuilder->get_widget("login_dialog", m_LoginDialog);
     auto response = m_LoginDialog->run();
     m_LoginDialog->close();
@@ -54,6 +78,23 @@ void TwitchChatWindow::display_login_dialog() {
                 close();
                 break;
             }
+
+            struct stat st {};
+            if(stat(token_file_path.c_str(), &st) == 0) {
+                if ((st.st_mode & S_IFDIR) == 0) {
+                    const int mkdir_error = mkdir(token_file_path.c_str(), S_IRWXU);
+                    if (-1 == mkdir_error) {
+                        std::cerr << "failed to create directory " << token_file_path.c_str() << std::endl;
+                        exit(4);
+                    }
+                }
+            }
+            std::ofstream token_file;
+            token_file.open(token_file_path + "/token");
+            token_file << token << std::endl;
+            token_file.close();
+            std::cout << "file written to " << token_file_path << std::endl;
+
             m_Twitch->set_token(std::string(token));
             break;
         }

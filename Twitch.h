@@ -27,6 +27,7 @@ private:
     int get_socket();
     void connect();
     void login();
+    static void delete_token();
     static std::string message_display(const std::string &prefix, const std::string &trailing);
 };
 

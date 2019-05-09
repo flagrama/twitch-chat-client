@@ -12,6 +12,7 @@
 #include <sstream>
 #include <utility>
 #include <chrono>
+#include <pwd.h>
 #include "Twitch.h"
 
 Twitch::Twitch() {
@@ -163,10 +164,14 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
 
                 if (command == "NOTICE") {
                     if (trailing == "Login authentication failed") {
-                        std::cout << "Bad OAuth token" << std::endl;
+                        std::cerr << "Bad OAuth token" << std::endl;
+                        delete_token();
+                        exit(5);
                     }
                     if (trailing == "Improperly formatted auth") {
-                        std::cout << "Not an OAuth token" << std::endl;
+                        std::cerr << "Not an OAuth token" << std::endl;
+                        delete_token();
+                        exit(6);
                     }
                 }
                 strcat(message_buffer, message_display(prefix, trailing).c_str());
@@ -191,4 +196,15 @@ std::string Twitch::message_display(const std::string &prefix, const std::string
     result.append(trailing);
     result.append("\n");
     return result;
+}
+
+void Twitch::delete_token() {
+    std::string token_file;
+
+    if ((token_file = getenv("HOME")).empty()) {
+        token_file = getpwuid(getuid())->pw_dir;
+    }
+
+    token_file.append("/.local/share/twitch_chat_client/token");
+    remove(token_file.c_str());
 }
