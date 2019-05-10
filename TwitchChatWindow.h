@@ -23,8 +23,10 @@ private:
     void setup_window();
     void display_login_dialog();
     void start_irc_thread();
+    void connect_signals();
+    void on_irc_message_box_activate (Gtk::Entry *irc_message_box);
 
-    Gtk::ScrolledWindow* m_Container;
+    Gtk::Box* m_Container;
     Twitch* m_Twitch;
     Gtk::TextView* m_TextView;
     Gtk::Dialog* m_LoginDialog;

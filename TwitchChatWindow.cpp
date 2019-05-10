@@ -18,6 +18,7 @@ TwitchChatWindow::TwitchChatWindow() :
     setup_window();
     display_login_dialog();
     start_irc_thread();
+    connect_signals();
 }
 
 void TwitchChatWindow::setup_window() {
@@ -122,6 +123,12 @@ void TwitchChatWindow::start_irc_thread() {
     });
 }
 
+void TwitchChatWindow::connect_signals() {
+    Gtk::Entry* message_box;
+    m_RefBuilder->get_widget("irc_message_box", message_box);
+    message_box->signal_activate().connect(sigc::bind<Gtk::Entry*>(sigc::mem_fun(*this, &TwitchChatWindow::on_irc_message_box_activate), message_box));
+}
+
 void TwitchChatWindow::update_widgets() {
     const int MAX_LINES = 500;
     Glib::ustring irc_message;
@@ -154,4 +161,10 @@ void TwitchChatWindow::on_notification() {
     }
 
     ThreadWindow::on_notification();
+}
+
+void TwitchChatWindow::on_irc_message_box_activate(Gtk::Entry *irc_message_box) {
+    if(irc_message_box->get_text_length() == 0) return;
+    irc_message_box->delete_text(0, -1);
+
 }
