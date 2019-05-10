@@ -18,8 +18,10 @@ IrcWorker::IrcWorker(Twitch* twitch) :
 
 void IrcWorker::get_data(Glib::ustring *message) {
     std::lock_guard<std::mutex> lock(m_Mutex);
-    *message = m_message;
-    m_message = "";
+    if(!m_message.empty()) {
+        *message = m_message;
+        m_message = "";
+    }
 }
 
 void IrcWorker::stop_processing_responses() {

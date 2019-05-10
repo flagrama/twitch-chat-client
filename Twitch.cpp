@@ -119,7 +119,7 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
             }
             int command_pos = message.find(' ', prefix_pos) + 1;
             int params_pos = message.find(' ', command_pos) + 1;
-            int trailing_pos = message.find(':', prefix_pos) + 1;
+            int trailing_pos = message.find(" :", prefix_pos) + 2;
 
             std::string prefix = message.substr(prefix_pos, command_pos - prefix_pos - 1);
             if(prefix.find(".tmi.twitch.tv") != std::string::npos) {
