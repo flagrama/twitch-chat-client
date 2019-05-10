@@ -14,13 +14,18 @@ public:
     Twitch();
     ~Twitch();
 
+    bool get_token();
     void read_responses(std::queue<std::string> &text_queue);
-    void set_token(std::string token_string);
+    void set_token(std::string token_string, bool saving);
     void disconnect();
 private:
-    struct addrinfo *addr;
-    int sockfd;
+    struct addrinfo *m_Addr;
+    int m_SockFd;
     bool stopping;
+
+    const std::string server_url = "irc.chat.twitch.tv";
+    const std::string server_port = "6667";
+    const std::string server_ssl_port = "6697";
     std::string token;
 
     static addrinfo *get_addrinfo();

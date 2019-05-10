@@ -13,17 +13,91 @@
 #include <utility>
 #include <chrono>
 #include <pwd.h>
+#include <fstream>
+#include <sys/stat.h>
 #include "Twitch.h"
 
 Twitch::Twitch() {
-    addr = get_addrinfo();
-    sockfd = get_socket();
+    m_Addr = get_addrinfo();
+    m_SockFd = get_socket();
     stopping = false;
 }
 
 Twitch::~Twitch() {
-    freeaddrinfo(addr);
-    close(sockfd);
+    freeaddrinfo(m_Addr);
+    close(m_SockFd);
+}
+
+bool Twitch::get_token() {
+    std::string token_file_path;
+
+    if ((token_file_path = getenv("HOME")).empty()) {
+        token_file_path = getpwuid(getuid())->pw_dir;
+    }
+
+    token_file_path.append("/.local/share/twitch_chat_client");
+    std::ifstream token_input_file(token_file_path + "/token");
+
+    if(!token_input_file.fail()) {
+        std::string token_string;
+
+        token_input_file.seekg(0, std::ios::end);
+        token_string.reserve(token_input_file.tellg());
+        token_input_file.seekg(0, std::ios::beg);
+
+        token_string.assign((std::istreambuf_iterator<char>(token_input_file)),
+                            std::istreambuf_iterator<char>());
+        set_token(token_string, false);
+        return true;
+    }
+    return false;
+}
+
+void Twitch::set_token(std::string token_string, bool saving) {
+    this->token = std::move(token_string);
+    std::string token_file_path;
+    std::ofstream token_file;
+
+    if(saving) {
+        std::cout << "saving" << std::endl;
+        if ((token_file_path = getenv("HOME")).empty()) {
+            token_file_path = getpwuid(getuid())->pw_dir;
+        }
+
+        token_file_path.append("/.local/share/twitch_chat_client");
+
+        struct stat st {};
+        if(stat(token_file_path.c_str(), &st) != 0) {
+            if ((st.st_mode & S_IFDIR) == 0) {
+                const int mkdir_error = mkdir(token_file_path.c_str(), S_IRWXU);
+                if (-1 == mkdir_error) {
+                    std::cerr << "failed to create directory " << token_file_path.c_str() << std::endl;
+                    exit(4);
+                }
+            }
+        }
+
+        token_file_path.append("/token");
+
+        token_file.open(token_file_path);
+        if(token_file.fail()) {
+            std::cerr << "failed to open file" ;
+            exit(5);
+        }
+        token_file << token << std::endl;
+        token_file.close();
+    }
+}
+
+void Twitch::delete_token() {
+    std::string token_file;
+
+    if ((token_file = getenv("HOME")).empty()) {
+        token_file = getpwuid(getuid())->pw_dir;
+    }
+
+    token_file.append("/.local/share/twitch_chat_client/token");
+    remove(token_file.c_str());
 }
 
 addrinfo *Twitch::get_addrinfo() {
@@ -46,7 +120,7 @@ addrinfo *Twitch::get_addrinfo() {
 }
 
 int Twitch::get_socket() {
-    int socket = ::socket(this->addr->ai_family, this->addr->ai_socktype, this->addr->ai_protocol);
+    int socket = ::socket(this->m_Addr->ai_family, this->m_Addr->ai_socktype, this->m_Addr->ai_protocol);
 
     if (socket == -1) {
         fprintf(stderr, "socket error: %d\n", errno);
@@ -57,7 +131,7 @@ int Twitch::get_socket() {
 }
 
 void Twitch::connect() {
-    int connection = ::connect(this->sockfd, this->addr->ai_addr, this->addr->ai_addrlen);
+    int connection = ::connect(this->m_SockFd, this->m_Addr->ai_addr, this->m_Addr->ai_addrlen);
 
     if (connection == -1) {
         fprintf(stderr, "connect error: %d\n", errno);
@@ -65,17 +139,19 @@ void Twitch::connect() {
     }
 }
 
-void Twitch::set_token(std::string token_string) {
-    this->token = std::move(token_string);
-}
-
 void Twitch::login() {
     std::string message;
     message = "PASS " + token + '\n';
-    send(this->sockfd, message.c_str(), message.length(), 0);
+    send(this->m_SockFd, message.c_str(), message.length(), 0);
 
     message = "NICK com.flagrama.*-twitch-chat\n";
-    send(this->sockfd, message.c_str(), message.length(), 0);
+    send(this->m_SockFd, message.c_str(), message.length(), 0);
+
+    message = "CAP REQ :twitch.tv/tags\n";
+    send(this->m_SockFd, message.c_str(), message.length(), 0);
+
+    message = "JOIN #zfg1\n";
+    send(this->m_SockFd, message.c_str(), message.length(), 0);
 }
 
 void Twitch::disconnect() {
@@ -94,7 +170,7 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         char response_buffer[1024] = "";
-        int bytes_received = recv(this->sockfd, response_buffer, sizeof response_buffer, 0);
+        int bytes_received = recv(this->m_SockFd, response_buffer, sizeof response_buffer, 0);
         std::string response(response_buffer, 0, bytes_received);
 
         if (bytes_received == 0) return;
@@ -142,9 +218,14 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
 
             if (message.substr(0, 4) == "PING") {
                 std::string reply = "PONG " + server + '\n';
-                send(this->sockfd, reply.c_str(), reply.length(), 0);
+                send(this->m_SockFd, reply.c_str(), reply.length(), 0);
             }
             else if (message.substr(0, server.length()) == server) {
+                if (command == "421") {
+                    strcat(message_buffer, ("Unknown Command: " + params).c_str());
+                    text_queue.push(message_buffer);
+                }
+
                 if (command == "CAP" && params.find("* ACK") != std::string::npos) {
                     std::string capabilities;
                     if (trailing.find("/tags") != std::string::npos) {
@@ -182,6 +263,13 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
                 text_queue.push(message_buffer);
             }
 
+            std::cout << std::endl;
+            std::cout << "message: " << message << std::endl;
+            std::cout << "prefix: " << prefix << std::endl;
+            std::cout << "command: " << command << std::endl;
+            std::cout << "params: " << params << std::endl;
+            std::cout << "trailing: " << trailing << std::endl;
+
             memset(message_buffer, 0, sizeof message_buffer);
             memset(response_buffer, 0, sizeof response_buffer);
         }
@@ -196,15 +284,4 @@ std::string Twitch::message_display(const std::string &prefix, const std::string
     result.append(trailing);
     result.append("\n");
     return result;
-}
-
-void Twitch::delete_token() {
-    std::string token_file;
-
-    if ((token_file = getenv("HOME")).empty()) {
-        token_file = getpwuid(getuid())->pw_dir;
-    }
-
-    token_file.append("/.local/share/twitch_chat_client/token");
-    remove(token_file.c_str());
 }
