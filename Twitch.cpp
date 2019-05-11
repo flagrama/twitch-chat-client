@@ -59,7 +59,6 @@ void Twitch::set_token(std::string token_string, bool saving) {
     std::ofstream token_file;
 
     if(saving) {
-        std::cout << "saving" << std::endl;
         if ((token_file_path = getenv("HOME")).empty()) {
             token_file_path = getpwuid(getuid())->pw_dir;
         }
@@ -188,7 +187,7 @@ void Twitch::read_responses(std::queue<std::string> &text_queue) {
         while (std::getline(iss, message, '\n')) {
             int prefix_pos;
             if(message[0] == '@') {
-                prefix_pos = message.find(' ') + 2;
+                prefix_pos = message.find(" :") + 2;
             }
             else {
                 prefix_pos = message.find(':') + 1;
