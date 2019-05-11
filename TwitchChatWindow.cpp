@@ -113,7 +113,9 @@ void TwitchChatWindow::update_widgets() {
             buffer->erase(iter_start, iter_end);
         }
 
-        m_TextView->scroll_to(mark);
+        if(m_Container->get_allocated_height() + m_TextView->get_vadjustment()->get_value() > m_TextView->get_vadjustment()->get_upper()) {
+            m_TextView->scroll_to(mark);
+        }
     }
 }
 
